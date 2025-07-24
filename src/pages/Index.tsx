@@ -20,26 +20,7 @@ const Index = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [playlist, setPlaylist] = useState<Track[]>([
-    { title: "Мёртвый Анархист", artist: "Король и Шут", duration: "3:42" },
-    { title: "Золото мёртвых", artist: "NAGART", duration: "4:18" },
-    { title: "Демобилизация", artist: "Сектор Газа", duration: "3:25" },
-    { title: "Твой звонок", artist: "Сектор Газа", duration: "3:51" },
-    { title: "Лирика", artist: "Сектор Газа", duration: "4:02" },
-    { title: "Камнем по голове", artist: "КиШ", duration: "3:33" },
-    { title: "Охотник", artist: "Король и Шут", duration: "4:15" },
-    { title: "Пиво-Пиво-Пиво", artist: "КняZz", duration: "3:28" },
-    { title: "Лесник", artist: "Король и Шут", duration: "5:44" },
-    { title: "Танец злобного гения", artist: "Король и Шут", duration: "4:21" },
-    { title: "Кукла колдуна", artist: "Король и Шут", duration: "4:07" },
-    { title: "Дагон", artist: "Король и Шут", duration: "3:55" },
-    { title: "Прыгну со скалы", artist: "Король и Шут", duration: "4:33" },
-    { title: "Бомж", artist: "Сектор Газа", duration: "2:58" },
-    { title: "Дурак и молния", artist: "Король и Шут", duration: "4:12" },
-    { title: "Музыка нас связала", artist: "Мираж", duration: "3:47" },
-    { title: "Komarovo (DVRST Phonk Remix)", artist: "DVRST, Игорь Скляр, Atomic Heart", duration: "2:33" },
-    { title: "Всё, что касается", artist: "Звери", duration: "4:28" }
-  ]);
+  const [playlist, setPlaylist] = useState<Track[]>([]);
 
   // Audio controls
   useEffect(() => {
@@ -155,9 +136,11 @@ const Index = () => {
       <div className="border-b border-gray-800 p-6">
         <div className="container mx-auto">
           <h1 className="text-3xl font-bold text-center text-white mb-2">
-            🎵 Русский Рок Плейлист
+            🎵 Мой Музыкальный Плейлист
           </h1>
-          <p className="text-gray-400 text-center">18 треков • Классика русского рока</p>
+          <p className="text-gray-400 text-center">
+            {playlist.length === 0 ? 'Загрузите музыку для начала' : `${playlist.length} треков в плейлисте`}
+          </p>
         </div>
       </div>
 
@@ -166,55 +149,63 @@ const Index = () => {
         <div className="flex-1">
           <Card className="bg-[#2D2D2D] border-gray-700">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-white">Треки</h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowUpload(!showUpload)}
-                    className="bg-[#FF6B35] hover:bg-[#FF8555] text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              {playlist.length === 0 ? (
+                <div className="text-center py-12">
+                  <div 
+                    className="mb-8 p-8 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-[#FF6B35] transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.add('border-[#FF6B35]');
+                    }}
+                    onDragLeave={(e) => {
+                      e.currentTarget.classList.remove('border-[#FF6B35]');
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove('border-[#FF6B35]');
+                      handleFileUpload(e.dataTransfer.files);
+                    }}
                   >
-                    <Icon name="Upload" size={16} />
-                    {showUpload ? 'Скрыть' : 'Загрузить'}
-                  </button>
+                    <Icon name="Music" size={48} className="mx-auto mb-4 text-gray-400" />
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      Добавьте музыку в плейлист
+                    </h3>
+                    <p className="text-gray-400 mb-4">
+                      Перетащите аудио файлы сюда или кликните для выбора
+                    </p>
+                    <div className="inline-flex items-center gap-2 bg-[#FF6B35] hover:bg-[#FF8555] text-white px-6 py-3 rounded-lg transition-colors">
+                      <Icon name="Upload" size={16} />
+                      Выбрать файлы
+                    </div>
+                    <p className="text-sm text-gray-500 mt-4">
+                      Поддерживаются: MP3, WAV, OGG, M4A
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-white">Треки</h2>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-[#FF6B35] hover:bg-[#FF8555] text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <Icon name="Plus" size={16} />
+                        Добавить
+                      </button>
+                      <button
+                        onClick={() => setPlaylist([])}
+                        className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <Icon name="Trash2" size={16} />
+                        Очистить
+                      </button>
+                    </div>
+                  </div>
 
-              {showUpload && (
-                <div 
-                  className="mb-4 p-6 border-2 border-dashed border-gray-600 rounded-lg text-center cursor-pointer hover:border-[#FF6B35] transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.add('border-[#FF6B35]');
-                  }}
-                  onDragLeave={(e) => {
-                    e.currentTarget.classList.remove('border-[#FF6B35]');
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.remove('border-[#FF6B35]');
-                    handleFileUpload(e.dataTransfer.files);
-                  }}
-                >
-                  <Icon name="Upload" size={32} className="mx-auto mb-2 text-gray-400" />
-                  <p className="text-gray-400">
-                    Перетащите аудио файлы сюда или кликните для выбора
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Поддерживаются: MP3, WAV, OGG, M4A
-                  </p>
-                </div>
-              )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="audio/*"
-                className="hidden"
-                onChange={(e) => handleFileUpload(e.target.files)}
-              />
-              <div className="space-y-2">
+                  <div className="space-y-2">
                 {playlist.map((track, index) => (
                   <div 
                     key={index}
@@ -250,7 +241,18 @@ const Index = () => {
                     </div>
                   </div>
                 ))}
-              </div>
+                  </div>
+                </>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="audio/*"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e.target.files)}
+              />
             </div>
           </Card>
         </div>
@@ -264,12 +266,25 @@ const Index = () => {
                 <div className="w-24 h-24 bg-gradient-to-br from-[#FF6B35] to-[#FF8555] rounded-full mx-auto mb-4 flex items-center justify-center">
                   <Icon name="Music" size={32} className="text-white" />
                 </div>
-                <h3 className="font-semibold text-white mb-1">
-                  {playlist[currentTrack].title}
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  {playlist[currentTrack].artist}
-                </p>
+                {playlist.length > 0 ? (
+                  <>
+                    <h3 className="font-semibold text-white mb-1">
+                      {playlist[currentTrack]?.title || 'Неизвестный трек'}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {playlist[currentTrack]?.artist || 'Неизвестный исполнитель'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-white mb-1">
+                      Плейлист пуст
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Добавьте музыку для прослушивания
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Progress Bar */}
@@ -285,7 +300,7 @@ const Index = () => {
                 </div>
                 <div className="flex justify-between text-xs text-gray-400 mt-2">
                   <span>{formatTime(currentTime)}</span>
-                  <span>{duration ? formatTime(duration) : playlist[currentTrack].duration}</span>
+                  <span>{duration ? formatTime(duration) : (playlist[currentTrack]?.duration || '0:00')}</span>
                 </div>
               </div>
 
@@ -293,21 +308,28 @@ const Index = () => {
               <div className="flex items-center justify-center gap-6 mb-6">
                 <button 
                   onClick={prevTrack}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  disabled={playlist.length === 0}
+                  className={`transition-colors ${playlist.length === 0 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`}
                 >
                   <Icon name="SkipBack" size={20} />
                 </button>
                 
                 <button 
                   onClick={togglePlay}
-                  className="bg-[#FF6B35] hover:bg-[#FF8555] text-white rounded-full p-3 transition-colors"
+                  disabled={playlist.length === 0}
+                  className={`rounded-full p-3 transition-colors ${
+                    playlist.length === 0 
+                      ? 'bg-gray-600 cursor-not-allowed text-gray-400' 
+                      : 'bg-[#FF6B35] hover:bg-[#FF8555] text-white'
+                  }`}
                 >
                   <Icon name={isPlaying ? "Pause" : "Play"} size={24} />
                 </button>
                 
                 <button 
                   onClick={nextTrack}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  disabled={playlist.length === 0}
+                  className={`transition-colors ${playlist.length === 0 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`}
                 >
                   <Icon name="SkipForward" size={20} />
                 </button>
