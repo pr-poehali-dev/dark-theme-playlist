@@ -1,14 +1,26 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
+
+interface Track {
+  title: string;
+  artist: string;
+  duration: string;
+  url?: string;
+  file?: File;
+}
 
 const Index = () => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.7);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showUpload, setShowUpload] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const playlist = [
+  const [playlist, setPlaylist] = useState<Track[]>([
     { title: "Мёртвый Анархист", artist: "Король и Шут", duration: "3:42" },
     { title: "Золото мёртвых", artist: "NAGART", duration: "4:18" },
     { title: "Демобилизация", artist: "Сектор Газа", duration: "3:25" },
@@ -27,7 +39,64 @@ const Index = () => {
     { title: "Музыка нас связала", artist: "Мираж", duration: "3:47" },
     { title: "Komarovo (DVRST Phonk Remix)", artist: "DVRST, Игорь Скляр, Atomic Heart", duration: "2:33" },
     { title: "Всё, что касается", artist: "Звери", duration: "4:28" }
-  ];
+  ]);
+
+  // Audio controls
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      nextTrack();
+    };
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const track = playlist[currentTrack];
+    if (track.url) {
+      audio.src = track.url;
+    } else if (track.file) {
+      audio.src = URL.createObjectURL(track.file);
+    }
+
+    if (isPlaying) {
+      audio.play().catch(console.error);
+    }
+  }, [currentTrack, playlist]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.play().catch(console.error);
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
 
   const playTrack = (index: number) => {
     setCurrentTrack(index);
@@ -48,6 +117,38 @@ const Index = () => {
     setCurrentTrack(prev);
   };
 
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files) return;
+
+    const audioFiles = Array.from(files).filter(file => 
+      file.type.startsWith('audio/')
+    );
+
+    const newTracks: Track[] = audioFiles.map(file => ({
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      artist: "Локальный файл",
+      duration: "0:00",
+      file: file
+    }));
+
+    setPlaylist(prev => [...prev, ...newTracks]);
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = percent * duration;
+  };
+
   return (
     <div className="min-h-screen bg-[#1A1A1A] text-white">
       {/* Header */}
@@ -65,7 +166,54 @@ const Index = () => {
         <div className="flex-1">
           <Card className="bg-[#2D2D2D] border-gray-700">
             <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4 text-white">Треки</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-white">Треки</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowUpload(!showUpload)}
+                    className="bg-[#FF6B35] hover:bg-[#FF8555] text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Icon name="Upload" size={16} />
+                    {showUpload ? 'Скрыть' : 'Загрузить'}
+                  </button>
+                </div>
+              </div>
+
+              {showUpload && (
+                <div 
+                  className="mb-4 p-6 border-2 border-dashed border-gray-600 rounded-lg text-center cursor-pointer hover:border-[#FF6B35] transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-[#FF6B35]');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('border-[#FF6B35]');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-[#FF6B35]');
+                    handleFileUpload(e.dataTransfer.files);
+                  }}
+                >
+                  <Icon name="Upload" size={32} className="mx-auto mb-2 text-gray-400" />
+                  <p className="text-gray-400">
+                    Перетащите аудио файлы сюда или кликните для выбора
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Поддерживаются: MP3, WAV, OGG, M4A
+                  </p>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="audio/*"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e.target.files)}
+              />
               <div className="space-y-2">
                 {playlist.map((track, index) => (
                   <div 
@@ -92,8 +240,13 @@ const Index = () => {
                       </div>
                     </div>
                     
-                    <div className={`text-sm ${currentTrack === index ? 'text-gray-200' : 'text-gray-400'}`}>
-                      {track.duration}
+                    <div className="flex items-center gap-2">
+                      <div className={`text-sm ${currentTrack === index ? 'text-gray-200' : 'text-gray-400'}`}>
+                        {track.duration}
+                      </div>
+                      {(track.url || track.file) && (
+                        <Icon name="Volume2" size={12} className="text-green-500" />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -121,15 +274,18 @@ const Index = () => {
 
               {/* Progress Bar */}
               <div className="mb-6">
-                <div className="w-full bg-gray-700 rounded-full h-1">
+                <div 
+                  className="w-full bg-gray-700 rounded-full h-1 cursor-pointer"
+                  onClick={handleProgressClick}
+                >
                   <div 
-                    className="bg-[#FF6B35] h-1 rounded-full transition-all duration-300"
-                    style={{ width: '35%' }}
+                    className="bg-[#FF6B35] h-1 rounded-full transition-all duration-100"
+                    style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
                   ></div>
                 </div>
                 <div className="flex justify-between text-xs text-gray-400 mt-2">
-                  <span>1:32</span>
-                  <span>{playlist[currentTrack].duration}</span>
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{duration ? formatTime(duration) : playlist[currentTrack].duration}</span>
                 </div>
               </div>
 
@@ -180,8 +336,26 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Hidden audio element for future implementation */}
-      <audio ref={audioRef} />
+      {/* Audio element */}
+      <audio 
+        ref={audioRef}
+        onLoadedMetadata={() => {
+          const audio = audioRef.current;
+          if (audio) {
+            setDuration(audio.duration);
+          }
+        }}
+        onTimeUpdate={() => {
+          const audio = audioRef.current;
+          if (audio) {
+            setCurrentTime(audio.currentTime);
+          }
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          nextTrack();
+        }}
+      />
 
 
     </div>
